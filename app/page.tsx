@@ -4,9 +4,9 @@ import { Car, MapPin, Calendar, Shield } from "lucide-react"
 
 export default function Home() {
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen w-full flex-col">
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur">
-        <div className="container flex h-16 items-center justify-between">
+        <div className="mx-auto flex h-16 w-full max-w-screen-xl items-center justify-between px-4 md:px-6">
           <div className="flex items-center gap-2 font-bold text-xl">
             <Car className="h-6 w-6" />
             <span>ParkingApp</span>
@@ -34,7 +34,7 @@ export default function Home() {
       </header>
       <main className="flex-1">
         <section className="py-20 md:py-28">
-          <div className="container flex flex-col items-center text-center">
+          <div className="mx-auto flex w-full max-w-screen-xl flex-col items-center px-4 text-center md:px-6">
             <h1 className="text-4xl md:text-6xl font-bold tracking-tight">Smart Parking Management</h1>
             <p className="mt-6 max-w-3xl text-xl text-muted-foreground">
               Easily reserve parking spaces, track your vehicle location, and manage your parking experience with our
@@ -54,7 +54,7 @@ export default function Home() {
         </section>
 
         <section id="features" className="py-20 bg-muted/50">
-          <div className="container">
+          <div className="mx-auto w-full max-w-screen-xl px-4 md:px-6">
             <h2 className="text-3xl font-bold text-center mb-12">Key Features</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <div className="flex flex-col items-center text-center p-6 bg-background rounded-lg shadow-sm">
@@ -85,14 +85,14 @@ export default function Home() {
         </section>
 
         <section id="how-it-works" className="py-20">
-          <div className="container">
+          <div className="mx-auto w-full max-w-screen-xl px-4 md:px-6">
             <h2 className="text-3xl font-bold text-center mb-12">How It Works</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
               <div className="aspect-video bg-muted rounded-lg flex items-center justify-center">
                 <img
                   src="/placeholder.svg?height=400&width=600"
                   alt="ParkingApp dashboard preview"
-                  className="rounded-lg shadow-md"
+                  className="rounded-lg shadow-md max-w-full h-auto"
                 />
               </div>
               <div className="space-y-6">
@@ -133,7 +133,7 @@ export default function Home() {
         </section>
 
         <section id="pricing" className="py-20 bg-muted/50">
-          <div className="container">
+          <div className="mx-auto w-full max-w-screen-xl px-4 md:px-6">
             <h2 className="text-3xl font-bold text-center mb-12">Simple Pricing</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
               <div className="flex flex-col p-6 bg-background rounded-lg shadow-sm">
@@ -242,7 +242,7 @@ export default function Home() {
         </section>
       </main>
       <footer className="border-t py-10">
-        <div className="container flex flex-col md:flex-row justify-between items-center gap-4">
+        <div className="mx-auto flex w-full max-w-screen-xl flex-col md:flex-row justify-between items-center gap-4 px-4 md:px-6">
           <div className="flex items-center gap-2 font-bold">
             <Car className="h-5 w-5" />
             <span>ParkingApp</span>

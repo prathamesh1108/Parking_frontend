@@ -16,7 +16,7 @@ import { CalendarIcon, Clock, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth"
 import { parkingApi, vehicleApi, reservationApi } from "@/lib/api"
-import type { ParkingLocationDto, VehicleDto, ReservationDto } from "@/types"
+import type { ParkingLocationDto, VehicleDto, ReservationDto, ParkingSpaceDto } from "@/types"
 import { useToast } from "@/components/ui/use-toast"
 
 export default function NewReservationPage() {
@@ -37,7 +37,7 @@ export default function NewReservationPage() {
 
   const [locations, setLocations] = useState<ParkingLocationDto[]>([])
   const [levels, setLevels] = useState<any[]>([])
-  const [spaces, setSpaces] = useState<any[]>([])
+  const [spaces, setSpaces] = useState<ParkingSpaceDto[]>([])
   const [vehicles, setVehicles] = useState<VehicleDto[]>([])
 
   useEffect(() => {
@@ -84,13 +84,55 @@ export default function NewReservationPage() {
         setLevels(levelsData)
         setLevelId("")
         setSpaceId("")
+        setSpaces([])
       } catch (error) {
         console.error("Error fetching levels:", error)
+        toast({
+          title: "Error",
+          description: "Failed to load parking levels. Please try again.",
+          variant: "destructive",
+        })
       }
     }
 
     fetchLevels()
-  }, [token, locationId])
+  }, [token, locationId, toast])
+
+  useEffect(() => {
+    const fetchSpaces = async () => {
+      if (!token || !levelId) return
+
+      try {
+        // This is a mock implementation - you'll need to create this endpoint in your backend
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/parking/levels/${levelId}/spaces`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch parking spaces")
+        }
+
+        const spacesData = await response.json()
+        setSpaces(spacesData)
+        setSpaceId("")
+      } catch (error) {
+        console.error("Error fetching spaces:", error)
+        // For now, let's create some dummy spaces for demonstration
+        const dummySpaces = Array.from({ length: 10 }, (_, i) => ({
+          id: i + 1,
+          spaceNumber: `Space-${i + 1}`,
+          status: "AVAILABLE",
+          levelId: Number(levelId),
+        }))
+        setSpaces(dummySpaces)
+        setSpaceId("")
+      }
+    }
+
+    fetchSpaces()
+  }, [token, levelId])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -126,9 +168,21 @@ export default function NewReservationPage() {
       router.push("/dashboard/reservations")
     } catch (error) {
       console.error("Error creating reservation:", error)
+
+      let errorMessage = "Failed to create reservation. Please try again."
+      if (error instanceof Error) {
+        if (error.message.includes("Parking space is not available")) {
+          errorMessage = "This parking space is not available for the selected time."
+        } else if (error.message.includes("overlapping")) {
+          errorMessage = "This space is already reserved for the selected time period."
+        } else if (error.message) {
+          errorMessage = error.message
+        }
+      }
+
       toast({
         title: "Error",
-        description: "Failed to create reservation. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {

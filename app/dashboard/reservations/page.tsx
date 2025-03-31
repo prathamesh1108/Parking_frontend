@@ -12,38 +12,43 @@ import { reservationApi } from "@/lib/api"
 import type { ReservationDto } from "@/types"
 import { format } from "date-fns"
 import { useToast } from "@/components/ui/use-toast"
+import { ErrorMessage } from "@/components/ui/error-message"
+import { getErrorMessage } from "@/lib/error-utils"
 
 export default function ReservationsPage() {
   const { token } = useAuth()
   const { toast } = useToast()
   const [reservations, setReservations] = useState<ReservationDto[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
+  const [actionError, setActionError] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchReservations = async () => {
       if (!token) return
+
+      setIsLoading(true)
+      setError(null)
 
       try {
         const data = await reservationApi.getUserReservations(token)
         setReservations(data)
       } catch (error) {
         console.error("Error fetching reservations:", error)
-        toast({
-          title: "Error",
-          description: "Failed to load reservations. Please try again.",
-          variant: "destructive",
-        })
+        setError(getErrorMessage(error))
       } finally {
         setIsLoading(false)
       }
     }
 
     fetchReservations()
-  }, [token, toast])
+  }, [token])
 
   const handleCancelReservation = async (reservationId: number) => {
     if (!token) return
+
+    setActionError(null)
 
     try {
       await reservationApi.cancelReservation(token, reservationId)
@@ -59,11 +64,7 @@ export default function ReservationsPage() {
       })
     } catch (error) {
       console.error("Error cancelling reservation:", error)
-      toast({
-        title: "Error",
-        description: "Failed to cancel reservation. Please try again.",
-        variant: "destructive",
-      })
+      setActionError(getErrorMessage(error))
     }
   }
 
@@ -110,79 +111,85 @@ export default function ReservationsPage() {
         </Button>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Your Reservations</CardTitle>
-          <CardDescription>View and manage your parking reservations</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {filteredReservations.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>ID</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead>Spot</TableHead>
-                  <TableHead>Date & Time</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Price</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredReservations.map((reservation) => (
-                  <TableRow key={reservation.id}>
-                    <TableCell className="font-medium">{reservation.reservationCode}</TableCell>
-                    <TableCell>{reservation.locationName}</TableCell>
-                    <TableCell>{reservation.spaceNumber}</TableCell>
-                    <TableCell>
-                      {format(new Date(reservation.startTime), "MM/dd/yyyy")}{" "}
-                      {format(new Date(reservation.startTime), "HH:mm")} -{" "}
-                      {format(new Date(reservation.endTime), "HH:mm")}
-                    </TableCell>
-                    <TableCell>
-                      <div
-                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                          reservation.status === "ACTIVE"
-                            ? "bg-green-100 text-green-800"
-                            : reservation.status === "UPCOMING"
-                              ? "bg-blue-100 text-blue-800"
-                              : reservation.status === "CANCELLED"
-                                ? "bg-red-100 text-red-800"
-                                : "bg-gray-100 text-gray-800"
-                        }`}
-                      >
-                        {reservation.status}
-                      </div>
-                    </TableCell>
-                    <TableCell>${reservation.price?.toFixed(2)}</TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        disabled={reservation.status === "CANCELLED" || reservation.status === "COMPLETED"}
-                        onClick={() => reservation.id && handleCancelReservation(reservation.id)}
-                      >
-                        {reservation.status === "CANCELLED" || reservation.status === "COMPLETED" ? "View" : "Cancel"}
-                      </Button>
-                    </TableCell>
+      {error ? (
+        <ErrorMessage message={error} />
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle>Your Reservations</CardTitle>
+            <CardDescription>View and manage your parking reservations</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {actionError && <ErrorMessage message={actionError} />}
+
+            {filteredReservations.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>ID</TableHead>
+                    <TableHead>Location</TableHead>
+                    <TableHead>Spot</TableHead>
+                    <TableHead>Date & Time</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Price</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-6">
-              <Calendar className="h-10 w-10 text-muted-foreground mb-2" />
-              <p className="text-muted-foreground">No reservations found</p>
-              <Link href="/dashboard/reservations/new" className="mt-4">
-                <Button variant="outline" size="sm">
-                  Create Reservation
-                </Button>
-              </Link>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                </TableHeader>
+                <TableBody>
+                  {filteredReservations.map((reservation) => (
+                    <TableRow key={reservation.id}>
+                      <TableCell className="font-medium">{reservation.reservationCode}</TableCell>
+                      <TableCell>{reservation.locationName}</TableCell>
+                      <TableCell>{reservation.spaceNumber}</TableCell>
+                      <TableCell>
+                        {format(new Date(reservation.startTime), "MM/dd/yyyy")}{" "}
+                        {format(new Date(reservation.startTime), "HH:mm")} -{" "}
+                        {format(new Date(reservation.endTime), "HH:mm")}
+                      </TableCell>
+                      <TableCell>
+                        <div
+                          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                            reservation.status === "ACTIVE"
+                              ? "bg-green-100 text-green-800"
+                              : reservation.status === "UPCOMING"
+                                ? "bg-blue-100 text-blue-800"
+                                : reservation.status === "CANCELLED"
+                                  ? "bg-red-100 text-red-800"
+                                  : "bg-gray-100 text-gray-800"
+                          }`}
+                        >
+                          {reservation.status}
+                        </div>
+                      </TableCell>
+                      <TableCell>${reservation.price?.toFixed(2)}</TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={reservation.status === "CANCELLED" || reservation.status === "COMPLETED"}
+                          onClick={() => reservation.id && handleCancelReservation(reservation.id)}
+                        >
+                          {reservation.status === "CANCELLED" || reservation.status === "COMPLETED" ? "View" : "Cancel"}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-6">
+                <Calendar className="h-10 w-10 text-muted-foreground mb-2" />
+                <p className="text-muted-foreground">No reservations found</p>
+                <Link href="/dashboard/reservations/new" className="mt-4">
+                  <Button variant="outline" size="sm">
+                    Create Reservation
+                  </Button>
+                </Link>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

@@ -62,14 +62,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = async (userData: UserDto) => {
     setIsLoading(true)
     try {
-      await authApi.register(userData)
-      // Auto login after registration
+      const response = await authApi.register(userData)
+      // Only auto login after successful registration
       await login(userData.email, userData.password!)
+      return response
     } catch (error) {
       console.error("Registration failed:", error)
-      throw error
-    } finally {
       setIsLoading(false)
+      throw error
     }
   }
 

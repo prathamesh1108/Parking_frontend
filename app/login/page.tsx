@@ -12,12 +12,14 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Car } from "lucide-react"
 import { useAuth } from "@/lib/auth"
 import { useToast } from "@/components/ui/use-toast"
+import { ErrorMessage } from "@/components/ui/error-message"
 
 export default function LoginPage() {
   const router = useRouter()
   const { login } = useAuth()
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -26,11 +28,14 @@ export default function LoginPage() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target
     setFormData((prev) => ({ ...prev, [id]: value }))
+    // Clear error when user starts typing
+    if (error) setError(null)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    setError(null)
 
     try {
       await login(formData.email, formData.password)
@@ -40,11 +45,16 @@ export default function LoginPage() {
       })
       router.push("/dashboard")
     } catch (error) {
-      toast({
-        title: "Login failed",
-        description: "Invalid email or password. Please try again.",
-        variant: "destructive",
-      })
+      console.error("Login failed:", error)
+
+      // Extract error message
+      let errorMessage = "Invalid email or password. Please try again."
+      if (error instanceof Error) {
+        errorMessage = error.message
+      }
+
+      // Set error state instead of showing toast for form errors
+      setError(errorMessage)
     } finally {
       setIsLoading(false)
     }
@@ -64,6 +74,8 @@ export default function LoginPage() {
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
+            {error && <ErrorMessage message={error} />}
+
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input

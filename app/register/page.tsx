@@ -13,12 +13,14 @@ import { Car } from "lucide-react"
 import { useAuth } from "@/lib/auth"
 import { useToast } from "@/components/ui/use-toast"
 import type { UserDto } from "@/types"
+import { ErrorMessage } from "@/components/ui/error-message"
 
 export default function RegisterPage() {
   const router = useRouter()
   const { register } = useAuth()
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [formData, setFormData] = useState<UserDto & { confirmPassword: string }>({
     firstName: "",
     lastName: "",
@@ -30,30 +32,22 @@ export default function RegisterPage() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target
     setFormData((prev) => ({ ...prev, [id]: value }))
+    // Clear error when user starts typing
+    if (error) setError(null)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError(null)
 
     if (formData.password !== formData.confirmPassword) {
-      toast({
-        title: "Passwords don't match",
-        description: "Please make sure your passwords match.",
-        variant: "destructive",
-      })
+      setError("Passwords don't match. Please make sure your passwords match.")
       return
     }
 
     setIsLoading(true)
 
     try {
-      console.log("Submitting registration form with data:", {
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        email: formData.email,
-        password: "********", // Don't log the actual password
-      })
-
       const userData: UserDto = {
         firstName: formData.firstName,
         lastName: formData.lastName,
@@ -69,11 +63,15 @@ export default function RegisterPage() {
       router.push("/dashboard")
     } catch (error) {
       console.error("Registration error:", error)
-      toast({
-        title: "Registration failed",
-        description: "There was an error creating your account. Please try again.",
-        variant: "destructive",
-      })
+
+      // Extract error message
+      let errorMessage = "There was an error creating your account. Please try again."
+      if (error instanceof Error) {
+        errorMessage = error.message
+      }
+
+      // Display the error in the form
+      setError(errorMessage)
     } finally {
       setIsLoading(false)
     }
@@ -93,6 +91,8 @@ export default function RegisterPage() {
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
+            {error && <ErrorMessage message={error} />}
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="firstName">First name</Label>

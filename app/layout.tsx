@@ -11,7 +11,7 @@ const inter = Inter({ subsets: ["latin"] })
 export const metadata: Metadata = {
   title: "ParkingApp - Smart Parking Management",
   description: "Manage parking spaces and vehicle locations efficiently",
-    generator: 'v0.dev'
+  viewport: "width=device-width, initial-scale=1, viewport-fit=cover",
 }
 
 export default function RootLayout({
@@ -33,6 +33,3 @@ export default function RootLayout({
   )
 }
 
-
-
-import './globals.css'
