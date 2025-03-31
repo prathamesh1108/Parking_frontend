@@ -10,7 +10,7 @@ interface AuthContextType {
   isLoading: boolean
   isAuthenticated: boolean
   login: (email: string, password: string) => Promise<void>
-  register: (userData: UserDto) => Promise<void>
+  register: (userData: UserDto) => Promise<UserDto>
   logout: () => void
 }
 
@@ -65,7 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await authApi.register(userData)
       // Only auto login after successful registration
       await login(userData.email, userData.password!)
-      return response
+      return userData
     } catch (error) {
       console.error("Registration failed:", error)
       setIsLoading(false)
