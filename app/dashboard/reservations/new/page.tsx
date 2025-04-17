@@ -11,22 +11,27 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { format } from "date-fns"
+import { format, addDays, isBefore, startOfDay } from "date-fns"
 import { CalendarIcon, Clock, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/lib/auth"
 import { parkingApi, vehicleApi, reservationApi } from "@/lib/api"
 import type { ParkingLocationDto, VehicleDto, ReservationDto, ParkingSpaceDto } from "@/types"
 import { useToast } from "@/components/ui/use-toast"
+import { ErrorMessage } from "@/components/ui/error-message"
+import { getErrorMessage } from "@/lib/error-utils"
 
 export default function NewReservationPage() {
   const router = useRouter()
-  const { token } = useAuth()
+  const { token, isAuthenticated, isLoading: authLoading } = useAuth()
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
   const [isDataLoading, setIsDataLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  const [date, setDate] = useState<Date>(new Date())
+  // Use tomorrow as the default date to ensure it's in the future
+  const tomorrow = addDays(new Date(), 1)
+  const [date, setDate] = useState<Date>(tomorrow)
   const [startTime, setStartTime] = useState("14:00")
   const [endTime, setEndTime] = useState("18:00")
   const [locationId, setLocationId] = useState("")
@@ -39,6 +44,13 @@ export default function NewReservationPage() {
   const [levels, setLevels] = useState<any[]>([])
   const [spaces, setSpaces] = useState<ParkingSpaceDto[]>([])
   const [vehicles, setVehicles] = useState<VehicleDto[]>([])
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      router.push("/login")
+    }
+  }, [authLoading, isAuthenticated, router])
 
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -62,18 +74,16 @@ export default function NewReservationPage() {
         }
       } catch (error) {
         console.error("Error fetching initial data:", error)
-        toast({
-          title: "Error",
-          description: "Failed to load required data. Please try again.",
-          variant: "destructive",
-        })
+        setError(getErrorMessage(error))
       } finally {
         setIsDataLoading(false)
       }
     }
 
-    fetchInitialData()
-  }, [token, toast])
+    if (token) {
+      fetchInitialData()
+    }
+  }, [token])
 
   useEffect(() => {
     const fetchLevels = async () => {
@@ -87,16 +97,14 @@ export default function NewReservationPage() {
         setSpaces([])
       } catch (error) {
         console.error("Error fetching levels:", error)
-        toast({
-          title: "Error",
-          description: "Failed to load parking levels. Please try again.",
-          variant: "destructive",
-        })
+        setError(getErrorMessage(error))
       }
     }
 
-    fetchLevels()
-  }, [token, locationId, toast])
+    if (locationId) {
+      fetchLevels()
+    }
+  }, [token, locationId])
 
   useEffect(() => {
     const fetchSpaces = async () => {
@@ -131,13 +139,22 @@ export default function NewReservationPage() {
       }
     }
 
-    fetchSpaces()
+    if (levelId) {
+      fetchSpaces()
+    }
   }, [token, levelId])
+
+  // Update the handleSubmit function in your reservation form
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!token) return
+    if (!token) {
+      setError("You must be logged in to create a reservation")
+      return
+    }
 
+    // Clear previous errors
+    setError(null)
     setIsLoading(true)
 
     try {
@@ -149,6 +166,28 @@ export default function NewReservationPage() {
       const endDateTime = new Date(date)
       const [endHours, endMinutes] = endTime.split(":").map(Number)
       endDateTime.setHours(endHours, endMinutes, 0, 0)
+
+      // Client-side validation with more tolerance
+      // Allow reservations starting very soon (within 5 minutes)
+      const now = new Date()
+      const fiveMinutesFromNow = new Date(now.getTime() + 5 * 60 * 1000)
+
+      if (startDateTime < now) {
+        throw new Error("Start time must be in the future")
+      }
+
+      if (endDateTime <= startDateTime) {
+        throw new Error("End time must be after start time")
+      }
+
+      // Check if duration is between 30 minutes and 24 hours
+      const durationMs = endDateTime.getTime() - startDateTime.getTime()
+      const minDurationMs = 30 * 60 * 1000 // 30 minutes
+      const maxDurationMs = 24 * 60 * 60 * 1000 // 24 hours
+
+      if (durationMs < minDurationMs || durationMs > maxDurationMs) {
+        throw new Error("Reservation must be between 30 minutes and 24 hours")
+      }
 
       const reservationData: ReservationDto = {
         startTime: startDateTime.toISOString(),
@@ -168,26 +207,33 @@ export default function NewReservationPage() {
       router.push("/dashboard/reservations")
     } catch (error) {
       console.error("Error creating reservation:", error)
-
-      let errorMessage = "Failed to create reservation. Please try again."
-      if (error instanceof Error) {
-        if (error.message.includes("Parking space is not available")) {
-          errorMessage = "This parking space is not available for the selected time."
-        } else if (error.message.includes("overlapping")) {
-          errorMessage = "This space is already reserved for the selected time period."
-        } else if (error.message) {
-          errorMessage = error.message
-        }
-      }
-
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive",
-      })
+      setError(getErrorMessage(error))
     } finally {
       setIsLoading(false)
     }
+  }
+
+  // Generate time options in 30-minute intervals
+  const generateTimeOptions = () => {
+    const options = []
+    for (let hour = 0; hour < 24; hour++) {
+      for (const minute of [0, 30]) {
+        const formattedHour = hour.toString().padStart(2, "0")
+        const formattedMinute = minute.toString().padStart(2, "0")
+        options.push(`${formattedHour}:${formattedMinute}`)
+      }
+    }
+    return options
+  }
+
+  const timeOptions = generateTimeOptions()
+
+  if (authLoading) {
+    return (
+      <div className="flex-1 p-8 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
   }
 
   if (isDataLoading) {
@@ -209,6 +255,8 @@ export default function NewReservationPage() {
             <CardDescription>Fill in the details to reserve your parking spot</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
+            {error && <ErrorMessage message={error} />}
+
             <div className="space-y-2">
               <Label htmlFor="location">Parking Location</Label>
               <Select value={locationId} onValueChange={setLocationId} required>
@@ -274,7 +322,13 @@ export default function NewReservationPage() {
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0">
-                  <Calendar mode="single" selected={date} onSelect={(date) => date && setDate(date)} initialFocus />
+                  <Calendar
+                    mode="single"
+                    selected={date}
+                    onSelect={(date) => date && setDate(date)}
+                    initialFocus
+                    disabled={(date) => isBefore(date, startOfDay(new Date()))}
+                  />
                 </PopoverContent>
               </Popover>
             </div>
@@ -289,9 +343,9 @@ export default function NewReservationPage() {
                       <SelectValue placeholder="Select time" />
                     </SelectTrigger>
                     <SelectContent>
-                      {Array.from({ length: 24 }).map((_, i) => (
-                        <SelectItem key={i} value={`${i.toString().padStart(2, "0")}:00`}>
-                          {`${i.toString().padStart(2, "0")}:00`}
+                      {timeOptions.map((time) => (
+                        <SelectItem key={time} value={time}>
+                          {time}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -308,9 +362,9 @@ export default function NewReservationPage() {
                       <SelectValue placeholder="Select time" />
                     </SelectTrigger>
                     <SelectContent>
-                      {Array.from({ length: 24 }).map((_, i) => (
-                        <SelectItem key={i} value={`${i.toString().padStart(2, "0")}:00`}>
-                          {`${i.toString().padStart(2, "0")}:00`}
+                      {timeOptions.map((time) => (
+                        <SelectItem key={time} value={time}>
+                          {time}
                         </SelectItem>
                       ))}
                     </SelectContent>

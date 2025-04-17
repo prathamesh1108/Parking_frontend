@@ -1,11 +1,51 @@
 import type { UserDto, VehicleDto, ReservationDto, ParkingLocationDto, ParkedVehicleDto } from "@/types"
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api"
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || ""
+
+// Add this function to check if the API is available
+export async function checkApiAvailability(): Promise<boolean> {
+  if (!API_BASE_URL) return false
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/time/server-time`, {
+      method: "HEAD",
+      cache: "no-store",
+      signal: AbortSignal.timeout(3000), // 3 second timeout
+    })
+
+    return response.ok
+  } catch (error) {
+    console.error("API availability check failed:", error)
+    return false
+  }
+}
+
+// Function to check if error is an authentication error
+function isAuthError(error: any): boolean {
+  if (!error) return false
+
+  // Check HTTP status
+  if (error.status === 401 || error.status === 403) return true
+
+  // Check error message
+  if (
+    error.message &&
+    (error.message.includes("authentication") ||
+      error.message.includes("unauthorized") ||
+      error.message.includes("Invalid Credentials") ||
+      error.message.includes("token") ||
+      error.message.includes("JWT"))
+  ) {
+    return true
+  }
+
+  return false
+}
 
 // Enhanced error handling function
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
-    let errorMessage = "Invalid Credentials"
+    let errorMessage = "An unexpected error occurred"
 
     try {
       // Try to parse as JSON first
@@ -237,6 +277,23 @@ export const reservationApi = {
 
   createReservation: async (token: string, reservationData: ReservationDto) => {
     try {
+      // Ensure dates are properly formatted ISO strings
+      if (
+        reservationData.startTime &&
+        !(reservationData.startTime instanceof Date) &&
+        typeof reservationData.startTime !== "string"
+      ) {
+        reservationData.startTime = new Date(reservationData.startTime).toISOString()
+      }
+
+      if (
+        reservationData.endTime &&
+        !(reservationData.endTime instanceof Date) &&
+        typeof reservationData.endTime !== "string"
+      ) {
+        reservationData.endTime = new Date(reservationData.endTime).toISOString()
+      }
+
       const response = await fetch(`${API_BASE_URL}/reservations`, {
         method: "POST",
         headers: {
@@ -245,9 +302,16 @@ export const reservationApi = {
         },
         body: JSON.stringify(reservationData),
       })
+
       return handleResponse<ReservationDto>(response)
     } catch (error) {
       console.error("Create reservation API error:", error)
+
+      // Check if it's an authentication error
+      if (isAuthError(error)) {
+        throw new Error("Invalid Credentials. Please log in again.")
+      }
+
       throw error
     }
   },
