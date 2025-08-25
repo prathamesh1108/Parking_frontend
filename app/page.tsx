@@ -88,12 +88,27 @@ export default function Home() {
           <div className="mx-auto w-full max-w-screen-xl px-4 md:px-6">
             <h2 className="text-3xl font-bold text-center mb-12">How It Works</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
-              <div className="aspect-video bg-muted rounded-lg flex items-center justify-center">
-                <img
-                  src="/placeholder.svg?height=400&width=600"
-                  alt="ParkingApp dashboard preview"
-                  className="rounded-lg shadow-md max-w-full h-auto"
-                />
+              <div className="aspect-video bg-gradient-to-br from-blue-50 to-indigo-100 rounded-lg flex items-center justify-center p-8 border">
+                <div className="w-full max-w-md bg-white rounded-lg shadow-lg p-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Car className="h-5 w-5 text-primary" />
+                    <span className="font-semibold">ParkingApp Dashboard</span>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between p-2 bg-green-50 rounded border-l-4 border-green-400">
+                      <span className="text-sm">Current Reservation</span>
+                      <span className="text-xs text-green-600">Active</span>
+                    </div>
+                    <div className="flex items-center gap-2 p-2 bg-gray-50 rounded">
+                      <MapPin className="h-4 w-4 text-gray-500" />
+                      <span className="text-sm text-gray-600">Level B2, Space 15</span>
+                    </div>
+                    <div className="flex items-center gap-2 p-2 bg-gray-50 rounded">
+                      <Calendar className="h-4 w-4 text-gray-500" />
+                      <span className="text-sm text-gray-600">2 hours remaining</span>
+                    </div>
+                  </div>
+                </div>
               </div>
               <div className="space-y-6">
                 <div className="flex gap-4">

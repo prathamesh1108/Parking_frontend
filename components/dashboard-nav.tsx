@@ -31,17 +31,7 @@ const navItems: NavItem[] = [
     title: "My Vehicles",
     href: "/dashboard/vehicles",
     icon: <MapPin className="h-5 w-5" />,
-  },
-  {
-    title: "Billing",
-    href: "/dashboard/billing",
-    icon: <CreditCard className="h-5 w-5" />,
-  },
-  {
-    title: "Settings",
-    href: "/dashboard/settings",
-    icon: <Settings className="h-5 w-5" />,
-  },
+  }
 ]
 
 export function DashboardNav() {

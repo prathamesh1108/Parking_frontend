@@ -1,8 +1,8 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
+import React, { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 import { authApi, userApi } from "./api"
-import type { UserDto } from "@/types"
+import type { UserDto } from "../types"
 
 interface AuthContextType {
   user: UserDto | null
@@ -12,6 +12,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>
   register: (userData: UserDto) => Promise<UserDto>
   logout: () => void
+  refreshToken: () => Promise<boolean>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -38,7 +39,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(userData)
     } catch (error) {
       console.error("Failed to fetch user:", error)
-      logout()
+      // Only logout if it's an authentication error
+      if (
+        error instanceof Error &&
+        ((error as any).status === 401 ||
+          (error as any).status === 403 ||
+          error.message.includes("Invalid Credentials") ||
+          error.message.includes("authentication"))
+      ) {
+        logout()
+      }
     } finally {
       setIsLoading(false)
     }
@@ -65,7 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await authApi.register(userData)
       // Only auto login after successful registration
       await login(userData.email, userData.password!)
-      return userData
+      return response
     } catch (error) {
       console.error("Registration failed:", error)
       setIsLoading(false)
@@ -79,6 +89,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null)
   }
 
+  // Add a function to refresh the token if needed
+  const refreshToken = async (): Promise<boolean> => {
+    try {
+      if (!token) return false
+
+      // Check if token exists in localStorage
+      const storedToken = localStorage.getItem("token")
+      if (!storedToken) {
+        logout()
+        return false
+      }
+
+      // Call the refresh token endpoint
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/refresh-token`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${storedToken}`,
+        },
+      })
+
+      if (!response.ok) {
+        // If refresh fails, log the user out
+        logout()
+        return false
+      }
+
+      const data = await response.json()
+
+      // If we got a new token, update it
+      if (data.accessToken) {
+        localStorage.setItem("token", data.accessToken)
+        setToken(data.accessToken)
+        return true
+      }
+
+      // If no new token but response is OK, token is still valid
+      return true
+    } catch (error) {
+      console.error("Token refresh failed:", error)
+      logout()
+      return false
+    }
+  }
+
   return (
     <AuthContext.Provider
       value={{
@@ -89,6 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         register,
         logout,
+        refreshToken,
       }}
     >
       {children}
@@ -103,4 +158,3 @@ export function useAuth() {
   }
   return context
 }
-
